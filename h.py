@@ -60,8 +60,8 @@ class AttentionBlock(Layer):
         values = K.dot(inputs, self.value_w)
         logits = K.batch_dot(queries, K.permute_dimensions(keys, (0, 2, 1)))
         # logits.data.masked_fill_(mask, float('-inf'))
-        mask = Lambda(lambda uu: K.ones_like(uu) * np.triu(np.ones(uu.shape.as_list()[1:]), k=1))(logits)
-        logits = mask * (-1e12) + logits
+        mask = Lambda(lambda uu: K.ones_like(uu) * np.triu((-np.inf) * np.ones(uu.shape.as_list()[1:]), k=1))(logits)
+        logits = mask + logits
         # logits = logits * (1 - (1 - mask) * (-1000))
         # logits = Lambda(lambda uu: tf.scatter_update(uu, tf.where(mask), -np.inf))(logits)
         # logits = Lambda(lambda uu: uu, mask=mask)(logits)
