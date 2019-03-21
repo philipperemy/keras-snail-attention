@@ -77,6 +77,7 @@ class AttentionBlock(Layer):
 def get_script_arguments():
     args = ArgumentParser()
     args.add_argument('--attention', action='store_true')
+    args.add_argument('--units', default=32, type=int)
     return args.parse_args()
 
 
@@ -95,10 +96,11 @@ def main():
 
     print('Build model...')
     i = Input(shape=(maxlen,))
-    x = Embedding(max_features, 128)(i)
-    x = LSTM(128, dropout=0.2, recurrent_dropout=0.2, return_sequences=True)(x)
+    x = Embedding(max_features, args.units)(i)
+    x = LSTM(args.units, dropout=0.2, recurrent_dropout=0.2, return_sequences=True)(x)
     if args.attention:
-        x = AttentionBlock(128, 64, 64)(x)
+        x = AttentionBlock(args.units, 64, 64)(x)
+        x = Dense(args.units)(x)
     x = Flatten()(x)
     x = Dense(1, activation='sigmoid')(x)
     model = Model(inputs=[i], outputs=[x])
