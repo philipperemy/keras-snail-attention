@@ -94,7 +94,7 @@ def main():
     print('x_test shape:', x_test.shape)
 
     print('Build model...')
-    i = Input(shape=(80,))
+    i = Input(shape=(maxlen,))
     x = Embedding(max_features, 128)(i)
     x = LSTM(128, dropout=0.2, recurrent_dropout=0.2, return_sequences=True)(x)
     if args.attention:
