@@ -38,28 +38,31 @@ class AttentionBlock(Layer):
         self.seq_len = seq_len
         self.v_size = v_size
         self.dims = dims
-        self.key_w = None
-        self.query_w = None
-        self.value_w = None
         self.sqrt_k = math.sqrt(k_size)
+        self.keys_fc = None
+        self.queries_fc = None
+        self.values_fc = None
         super(AttentionBlock, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        self.key_w = self.add_weight(shape=(self.dims, self.k_size),
-                                     name='key_layer',
-                                     initializer='glorot_uniform')
-        self.query_w = self.add_weight(shape=(self.dims, self.k_size),
-                                       name='query_layer',
-                                       initializer='glorot_uniform')
-        self.value_w = self.add_weight(shape=(self.dims, self.v_size),
-                                       name='value_layer',
-                                       initializer='glorot_uniform')
+        # https://stackoverflow.com/questions/54194724/how-to-use-keras-layers-in-custom-keras-layer
+        self.keys_fc = Dense(self.k_size)
+        self.keys_fc.build((None, self.dims))
+        self._trainable_weights.extend(self.keys_fc.trainable_weights)
+
+        self.queries_fc = Dense(self.k_size)
+        self.queries_fc.build((None, self.dims))
+        self._trainable_weights.extend(self.queries_fc.trainable_weights)
+
+        self.values_fc = Dense(self.v_size)
+        self.values_fc.build((None, self.dims))
+        self._trainable_weights.extend(self.values_fc.trainable_weights)
 
     def call(self, inputs, **kwargs):
         # check that the implementation matches exactly py torch.
-        keys = K.dot(inputs, self.key_w)
-        queries = K.dot(inputs, self.query_w)
-        values = K.dot(inputs, self.value_w)
+        keys = self.keys_fc(inputs)
+        queries = self.queries_fc(inputs)
+        values = self.values_fc(inputs)
         logits = K.batch_dot(queries, K.permute_dimensions(keys, (0, 2, 1)))
         mask = K.ones_like(logits) * np.triu((-np.inf) * np.ones(logits.shape.as_list()[1:]), k=1)
         logits = mask + logits
@@ -77,7 +80,7 @@ class AttentionBlock(Layer):
 def get_script_arguments():
     args = ArgumentParser()
     args.add_argument('--attention', action='store_true')
-    args.add_argument('--units', default=32, type=int)
+    args.add_argument('--units', default=24, type=int)
     return args.parse_args()
 
 
@@ -99,7 +102,7 @@ def main():
     x = Embedding(max_features, args.units)(i)
     x = LSTM(args.units, dropout=0.2, recurrent_dropout=0.2, return_sequences=True)(x)
     if args.attention:
-        x = AttentionBlock(args.units, 64, 64)(x)
+        x = AttentionBlock(args.units, 24, 12)(x)
         x = Dense(args.units)(x)
     x = Flatten()(x)
     x = Dense(1, activation='sigmoid')(x)
