@@ -19,7 +19,7 @@ import keras.backend as K
 import numpy as np
 from keras import Input, Model
 from keras.datasets import imdb
-from keras.layers import Dense, Embedding, Flatten, Lambda
+from keras.layers import Dense, Embedding, Flatten
 from keras.layers import LSTM
 from keras.layers import Layer, Softmax
 from keras.preprocessing import sequence
@@ -59,15 +59,11 @@ class AttentionBlock(Layer):
         queries = K.dot(inputs, self.query_w)
         values = K.dot(inputs, self.value_w)
         logits = K.batch_dot(queries, K.permute_dimensions(keys, (0, 2, 1)))
-        # logits.data.masked_fill_(mask, float('-inf'))
-        mask = Lambda(lambda uu: K.ones_like(uu) * np.triu((-np.inf) * np.ones(uu.shape.as_list()[1:]), k=1))(logits)
+        mask = K.ones_like(logits) * np.triu((-np.inf) * np.ones(logits.shape.as_list()[1:]), k=1)
         logits = mask + logits
-        # logits = logits * (1 - (1 - mask) * (-1000))
-        # logits = Lambda(lambda uu: tf.scatter_update(uu, tf.where(mask), -np.inf))(logits)
-        # logits = Lambda(lambda uu: uu, mask=mask)(logits)
-        probs = Softmax(axis=2)(logits / self.sqrt_k)
+        probs = Softmax(axis=-1)(logits / self.sqrt_k)
         read = K.batch_dot(probs, values)
-        output = K.concatenate([inputs, read])
+        output = K.concatenate([inputs, read], axis=-1)
         return output
 
     def compute_output_shape(self, input_shape):
