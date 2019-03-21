@@ -14,6 +14,7 @@
         return torch.cat([minibatch, read], dim=2).permute(0,2,1)
 """
 import math
+from argparse import ArgumentParser
 
 import keras.backend as K
 import numpy as np
@@ -55,6 +56,7 @@ class AttentionBlock(Layer):
                                        initializer='glorot_uniform')
 
     def call(self, inputs, **kwargs):
+        # check that the implementation matches exactly py torch.
         keys = K.dot(inputs, self.key_w)
         queries = K.dot(inputs, self.query_w)
         values = K.dot(inputs, self.value_w)
@@ -72,38 +74,51 @@ class AttentionBlock(Layer):
         return tuple(output_shape)
 
 
-print('Loading data...')
-(x_train, y_train), (x_test, y_test) = imdb.load_data(num_words=max_features)
-print(len(x_train), 'train sequences')
-print(len(x_test), 'test sequences')
+def get_script_arguments():
+    args = ArgumentParser()
+    args.add_argument('--attention', action='store_true')
+    return args.parse_args()
 
-print('Pad sequences (samples x time)')
-x_train = sequence.pad_sequences(x_train, maxlen=maxlen)
-x_test = sequence.pad_sequences(x_test, maxlen=maxlen)
-print('x_train shape:', x_train.shape)
-print('x_test shape:', x_test.shape)
 
-print('Build model...')
-i = Input(shape=(80,))
-x = Embedding(max_features, 128)(i)
-x = LSTM(8, dropout=0.2, recurrent_dropout=0.2, return_sequences=True)(x)
-x = AttentionBlock(8, 8, 8)(x)
-x = Flatten()(x)
-x = Dense(1, activation='sigmoid')(x)
-model = Model(inputs=[i], outputs=[x])
+def main():
+    args = get_script_arguments()
+    print('Loading data...')
+    (x_train, y_train), (x_test, y_test) = imdb.load_data(num_words=max_features)
+    print(len(x_train), 'train sequences')
+    print(len(x_test), 'test sequences')
 
-# try using different optimizers and different optimizer configs
-model.compile(loss='binary_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy'])
+    print('Pad sequences (samples x time)')
+    x_train = sequence.pad_sequences(x_train, maxlen=maxlen)
+    x_test = sequence.pad_sequences(x_test, maxlen=maxlen)
+    print('x_train shape:', x_train.shape)
+    print('x_test shape:', x_test.shape)
 
-print('Train...')
-print(x_train.shape)
-print(y_train.shape)
-model.fit(x_train, y_train,
-          batch_size=batch_size,
-          epochs=15)
-score, acc = model.evaluate(x_test, y_test,
-                            batch_size=batch_size)
-print('Test score:', score)
-print('Test accuracy:', acc)
+    print('Build model...')
+    i = Input(shape=(80,))
+    x = Embedding(max_features, 128)(i)
+    x = LSTM(128, dropout=0.2, recurrent_dropout=0.2, return_sequences=True)(x)
+    if args.attention:
+        x = AttentionBlock(128, 64, 64)(x)
+    x = Flatten()(x)
+    x = Dense(1, activation='sigmoid')(x)
+    model = Model(inputs=[i], outputs=[x])
+
+    # try using different optimizers and different optimizer configs
+    model.compile(loss='binary_crossentropy',
+                  optimizer='adam',
+                  metrics=['accuracy'])
+    model.summary()
+    print('Train...')
+    print(x_train.shape)
+    print(y_train.shape)
+    model.fit(x_train, y_train,
+              batch_size=batch_size,
+              epochs=15, validation_data=(x_test, y_test))
+    score, acc = model.evaluate(x_test, y_test,
+                                batch_size=batch_size)
+    print('Test score:', score)
+    print('Test accuracy:', acc)
+
+
+if __name__ == '__main__':
+    main()
