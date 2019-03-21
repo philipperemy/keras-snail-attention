@@ -16,9 +16,10 @@
 import math
 
 import keras.backend as K
+import numpy as np
 from keras import Input, Model
 from keras.datasets import imdb
-from keras.layers import Dense, Embedding, Flatten
+from keras.layers import Dense, Embedding, Flatten, Lambda
 from keras.layers import LSTM
 from keras.layers import Layer, Softmax
 from keras.preprocessing import sequence
@@ -59,8 +60,9 @@ class AttentionBlock(Layer):
         values = K.dot(inputs, self.value_w)
         # logits = queries * keys
         logits = K.batch_dot(queries, K.permute_dimensions(keys, (0, 2, 1)))
-        # mask = Lambda(lambda yy: np.triu(np.ones(yy.size()), k=1).astype('uint8'))(logits)
-        # logits[mask] = -np.inf
+        # K.expand_dims(np.triu(np.ones(logits.shape.as_list()[1:]), k=1), axis=0)
+        mask = Lambda(lambda yy: np.triu(np.ones(yy.size()), k=1).astype('uint8'))(logits)
+        logits[mask] = -np.inf
         probs = Softmax(axis=2)(logits / self.sqrt_k)
         # read = probs * values  # K.batch_dot(probs, values)
         read = K.batch_dot(probs, values)
