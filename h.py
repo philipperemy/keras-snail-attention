@@ -58,13 +58,14 @@ class AttentionBlock(Layer):
         keys = K.dot(inputs, self.key_w)
         queries = K.dot(inputs, self.query_w)
         values = K.dot(inputs, self.value_w)
-        # logits = queries * keys
         logits = K.batch_dot(queries, K.permute_dimensions(keys, (0, 2, 1)))
-        # K.expand_dims(np.triu(np.ones(logits.shape.as_list()[1:]), k=1), axis=0)
-        mask = Lambda(lambda yy: np.triu(np.ones(yy.size()), k=1).astype('uint8'))(logits)
-        logits[mask] = -np.inf
+        # logits.data.masked_fill_(mask, float('-inf'))
+        mask = Lambda(lambda uu: K.ones_like(uu) * np.triu(np.ones(uu.shape.as_list()[1:]), k=1))(logits)
+        logits = mask * (-1e12) + logits
+        # logits = logits * (1 - (1 - mask) * (-1000))
+        # logits = Lambda(lambda uu: tf.scatter_update(uu, tf.where(mask), -np.inf))(logits)
+        # logits = Lambda(lambda uu: uu, mask=mask)(logits)
         probs = Softmax(axis=2)(logits / self.sqrt_k)
-        # read = probs * values  # K.batch_dot(probs, values)
         read = K.batch_dot(probs, values)
         output = K.concatenate([inputs, read])
         return output
