@@ -102,7 +102,7 @@ def main():
     x = Embedding(max_features, args.units)(i)
     x = LSTM(args.units, dropout=0.2, recurrent_dropout=0.2, return_sequences=True)(x)
     if args.attention:
-        x = AttentionBlock(args.units, 24, 12)(x)
+        x = AttentionBlock(args.units, k_size=24, v_size=13)(x)  # (80, 37) - looks correct.
         x = Dense(args.units)(x)
     x = Flatten()(x)
     x = Dense(1, activation='sigmoid')(x)
