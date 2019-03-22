@@ -1,18 +1,4 @@
-"""
-    def forward(self, minibatch):
-        minibatch = minibatch.permute(0,2,1)
-        keys = self.key_layer(minibatch)
-        queries = self.query_layer(minibatch)
-        values = self.value_layer(minibatch)
-        logits = torch.bmm(queries, keys.transpose(2,1))
-        mask = logits.data.new(logits.size(1), logits.size(2)).fill_(1).byte()
-        mask = torch.triu(mask, 1)
-        mask = mask.unsqueeze(0).expand_as(logits)
-        logits.data.masked_fill_(mask, float('-inf'))
-        probs = F.softmax(logits / self.sqrt_k, dim=2)
-        read = torch.bmm(probs, values)
-        return torch.cat([minibatch, read], dim=2).permute(0,2,1)
-"""
+
 import math
 from argparse import ArgumentParser
 
